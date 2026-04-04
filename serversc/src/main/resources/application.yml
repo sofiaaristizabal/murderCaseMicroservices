@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: serversc
+  profiles:
+    active: native #los archivos de configuracion en ambientes de produccion suelen vivir en un repo de github que es pulleado cada vez que se necesitan, native quiere decir que viven local, no en github
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: classpath:/config
+server:
+  port: 8888
+
+#no registramos el serversc en eureka para que los servicios no dependan de eureka para encontrar sus archivos de configuracion, sino que lo encuentren directamente con el url porque dentro del config que todavia no tienen esta las configuraciones del eureka server
