@@ -64,9 +64,6 @@ public class InvestigatorService {
          throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Case not found");
         }
 
-        if(caso == null){
-          throw new  ResponseStatusException(HttpStatus.NOT_FOUND, "Case not found");
-        }
         Investigator investigator = investigatorRepository.findById(id).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "investigator not found with id: " + id));
         InvestigatorMapper.assignCase(investigator, dto);
         return InvestigatorMapper.toResponseDTO(investigator);

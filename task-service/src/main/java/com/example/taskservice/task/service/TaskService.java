@@ -3,6 +3,9 @@ package com.example.taskservice.task.service;
 import com.example.taskservice.task.client.CaseClient;
 import com.example.taskservice.task.client.InvestigatorClient;
 import com.example.taskservice.task.dto.*;
+import com.example.taskservice.task.events.TaskAssignedEvent;
+import com.example.taskservice.task.events.TaskCompletedEvent;
+import com.example.taskservice.task.events.TaskEventProducer;
 import com.example.taskservice.task.mapper.TaskMapper;
 import com.example.taskservice.task.model.Status;
 import com.example.taskservice.task.model.Task;
@@ -12,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -19,11 +23,13 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final CaseClient caseClient;
     private final InvestigatorClient investigatorClient;
+    private final TaskEventProducer taskEventProducer;
 
-    public TaskService(TaskRepository taskRepository, CaseClient caseClient, InvestigatorClient investigatorClient) {
+    public TaskService(TaskRepository taskRepository, CaseClient caseClient, InvestigatorClient investigatorClient, TaskEventProducer taskEventProducer) {
         this.taskRepository = taskRepository;
         this.caseClient = caseClient;
         this.investigatorClient = investigatorClient;
+        this.taskEventProducer = taskEventProducer;
     }
 
     public TaskResponseDTO create(TaskCreateDTO dto) {
@@ -42,15 +48,22 @@ public class TaskService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Investigator not found");
         }
 
-        if(caso == null){throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Case does not exist"); };
-        if(investigator == null) {throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Investigator does not exist");
-        }else if (!investigator.caseId().equals(dto.caseId())){
+        if (!investigator.caseId().equals(dto.caseId())){
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Investigator case ID doesnt match task case id ");
         }
 
         Task task = TaskMapper.toEntity(dto);
         //task.setStatus(Status.INPROGRESS);
         Task saved = taskRepository.save(task);
+
+        taskEventProducer.publishTaskAssigned(new TaskAssignedEvent(
+                saved.getId(),
+                saved.getCaseId(),
+                saved.getInvestigatorId(),
+                saved.getTitle(),
+                LocalDateTime.now()
+        ));
+
         return TaskMapper.toResponseDTO(saved);
     }
 
@@ -89,9 +102,18 @@ public class TaskService {
         task.setFinish_date(dto.finish_date());
         task.setStatus(Status.FINISHED);
         Task saved = taskRepository.save(task);
+        taskEventProducer.publishTaskCompleted(new TaskCompletedEvent(
+                saved.getId(),
+                saved.getCaseId(),
+                saved.getInvestigatorId(),
+                saved.getTitle(),
+                saved.getStart_date(),
+                LocalDateTime.now()
+        ));
         return TaskMapper.toResponseDTO(saved);
     }
 
+    
     public void deleteById(Long id) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "task not found with id: " + id));

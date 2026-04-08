@@ -18,7 +18,7 @@ spring:
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
     consumer:
-      group-id:
+      group-id: evidence-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
@@ -27,6 +27,10 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.type.mapping: >
+          evidenceCreated:com.example.evidenceservice.evidence.events.EvidenceCreatedEvent
+
 eureka:
   client:
     serviceUrl:

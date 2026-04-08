@@ -1,0 +1,232 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: microservices_murdercase_db
+    restart: unless-stopped
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - microservices-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: mcv_zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - microservices-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: murderCase_kafka
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    networks:
+      - microservices-net
+    healthcheck:
+      test: [ "CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  serversc:
+    build:
+      context: ./serversc
+      dockerfile: Dockerfile
+    container_name: serversc
+    ports:
+      - "8888:8888"
+    networks:
+      - microservices-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8888/actuator/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  eureka:
+    build:
+      context: ./eureka
+      dockerfile: Dockerfile
+    container_name: eureka
+    ports:
+      - "8761:8761"
+    networks:
+      - microservices-net
+
+  keycloak:
+    image: quay.io/keycloak/keycloak
+    container_name: keycloak_murdercase
+    restart: unless-stopped
+    command: start-dev
+    ports:
+      - "8881:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: postgres
+    depends_on:
+      - postgres
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+    networks:
+      - microservices-net
+
+  case-service:
+    build:
+      context: ./case-service
+      dockerfile: Dockerfile
+    container_name: case-service
+    ports:
+      - "8083:8083"
+    networks:
+      - microservices-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      serversc:
+        condition: service_healthy
+      eureka:
+        condition: service_started
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/cases
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka
+      - SPRING_CONFIG_IMPORT=configserver:http://serversc:8888
+
+  evidence-service:
+    build:
+      context: ./evidence-service
+      dockerfile: Dockerfile
+    container_name: evidence-service
+    ports:
+      - "8084:8084"
+    networks:
+      - microservices-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      serversc:
+        condition: service_healthy
+      eureka:
+        condition: service_started
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/evidences
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka
+      - SPRING_CONFIG_IMPORT=configserver:http://serversc:8888
+
+  investigator-service:
+    build:
+      context: ./investigator-service
+      dockerfile: Dockerfile
+    container_name: investigator-service
+    ports:
+      - "8085:8085"
+    networks:
+      - microservices-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      serversc:
+        condition: service_healthy
+      eureka:
+        condition: service_started
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/investigators
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka
+      - SPRING_CONFIG_IMPORT=configserver:http://serversc:8888
+      - KEYCLOAK_SERVER_URL=http://keycloak:8080
+      - KEYCLOAK_ISSUER_URI=http://keycloak:8080/realms/murdercase
+      - KEYCLOAK_JWK_SET_URI=http://keycloak:8080/realms/murdercase/protocol/openid-connect/certs
+
+  person-service:
+    build:
+      context: ./person-service
+      dockerfile: Dockerfile
+    container_name: person-service
+    ports:
+      - "8086:8086"
+    networks:
+      - microservices-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      serversc:
+        condition: service_healthy
+      eureka:
+        condition: service_started
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/people
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka
+      - SPRING_CONFIG_IMPORT=configserver:http://serversc:8888
+
+  task-service:
+    build:
+      context: ./task-service
+      dockerfile: Dockerfile
+    container_name: task-service
+    ports:
+      - "8087:8087"
+    networks:
+      - microservices-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      serversc:
+        condition: service_healthy
+      eureka:
+        condition: service_started
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/tasks
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka
+      - SPRING_CONFIG_IMPORT=configserver:http://serversc:8888
+
+volumes:
+  postgres_data:
+  keycloak_data:
+
+networks:
+  microservices-net:
+    driver: bridge
+

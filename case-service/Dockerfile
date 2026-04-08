@@ -1,13 +1,15 @@
 #Building the application
-FROM maven:3.9.9-eclipse-temurin-21-alpine AS builder
+FROM eclipse-temurin:25-jdk AS builder
 WORKDIR /build
+COPY mvnw .
+COPY .mvn .mvn
 COPY pom.xml .
-RUN mvn dependency:go-offline
+RUN chmod +x mvnw && ./mvnw -DskipTests dependency:go-offline
 COPY src ./src
-RUN mvn  clean package -DskipTests
+RUN ./mvnw -DskipTests clean package
 
 #Run the application
-FROM eclipse-temurin:21-jdk-alpine
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 COPY --from=builder /build/target/*.jar app.jar
 EXPOSE 8083

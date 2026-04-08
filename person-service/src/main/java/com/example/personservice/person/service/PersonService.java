@@ -33,9 +33,7 @@ public class PersonService {
         }catch(FeignException.NotFound e){
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Case not found");
         }
-        if(caso == null ){
-          throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Case does not exist");
-        }
+
         Person person = PersonMapper.toEntity(dto);
         Person saved = personRepository.save(person);
         return PersonMapper.toRespuestaDTO(saved);

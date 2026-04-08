@@ -3,6 +3,8 @@ package com.example.evidenceservice.evidence.service;
 import com.example.evidenceservice.evidence.client.CaseClient;
 import com.example.evidenceservice.evidence.client.InvestigatorClient;
 import com.example.evidenceservice.evidence.dto.*;
+import com.example.evidenceservice.evidence.events.EvidenceCreatedEvent;
+import com.example.evidenceservice.evidence.events.EvidenceEventProducer;
 import com.example.evidenceservice.evidence.mapper.EvidenceMapper;
 import com.example.evidenceservice.evidence.model.Evidence;
 import com.example.evidenceservice.evidence.repository.EvidenceRepository;
@@ -11,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -18,11 +21,13 @@ public class EvidenceService {
      private final EvidenceRepository evidenceRepository;
      private final CaseClient caseClient;
      private final InvestigatorClient investigatorClient;
+     private final EvidenceEventProducer evidenceEventProducer;
 
-     public EvidenceService( EvidenceRepository evidenceRepository, CaseClient caseClient, InvestigatorClient investigatorClient){
+     public EvidenceService( EvidenceRepository evidenceRepository, CaseClient caseClient, InvestigatorClient investigatorClient, EvidenceEventProducer evidenceEventProducer){
          this.evidenceRepository = evidenceRepository;
          this.caseClient = caseClient;
          this.investigatorClient = investigatorClient;
+         this.evidenceEventProducer = evidenceEventProducer;
      }
 
      public EvidenceResponseDTO create(EvidenceCreateDTO dto){
@@ -44,17 +49,22 @@ public class EvidenceService {
          } catch(FeignException.NotFound e){
              throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Investigator who approved not found");
          }
-         if(caso == null){ throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Case doesnt exist");}
-         if(investigator_approved == null){ throw new ResponseStatusException(HttpStatus.NOT_FOUND, "investigator who approved doesnt exist");
-         }else if(!investigator_approved.caseId().equals(dto.caseId())){
-             throw new IllegalArgumentException("Investigator approved case id doesn't match evidence case id");
+         if(!investigator_approved.caseId().equals(dto.caseId())){
+             throw new ResponseStatusException(HttpStatus.CONFLICT,"Investigator approved case id doesn't match evidence case id");
          }
-         if(investigator_collect == null){ throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Investigator who collected doesnt exist");
-         }else if(!investigator_collect.caseId().equals(dto.caseId())){
-             throw new IllegalArgumentException("Investigator collect case id doesn't match evidence case id");
+         if(!investigator_collect.caseId().equals(dto.caseId())){
+             throw new ResponseStatusException(HttpStatus.CONFLICT,"Investigator approved case id doesn't match evidence case id");
          }
          Evidence evidence = EvidenceMapper.toEntity(dto);
          Evidence saved = evidenceRepository.save(evidence);
+
+         evidenceEventProducer.publishEvidenceCreated(new EvidenceCreatedEvent(
+                 saved.getId(),
+                 saved.getTitle(),
+                 saved.getCaseId(),
+                 LocalDateTime.now()
+         ));
+
          return EvidenceMapper.toResponseDTO(evidence);
      }
 
