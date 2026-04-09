@@ -3,3 +3,4 @@ CREATE DATABASE evidences;
 CREATE DATABASE investigators;
 CREATE DATABASE tasks;
 CREATE DATABASE people;
+CREATE DATABASE audits;

@@ -44,4 +44,11 @@ keycloak:
   server-url: ${KEYCLOAK_SERVER_URL:http://localhost:8881}
   realm: ${KEYCLOAK_REALM:murdercase}
   client-id: ${KEYCLOAK_CLIENT_ID:murdercase-backend}
-  client-secret: ${KEYCLOAK_CLIENT_SECRET:zJiz8fQM7GDZQoUb2BsCHW59XtPGac2o}
+  client-secret: ${KEYCLOAK_CLIENT_SECRET:UOZ81WSrTFrxH4ZlkUCU0SsmFRN0qV6d}
+
+springdoc:
+  swagger-ui:
+    oauth:
+      client-id: murdercase-backend
+      client-secret: UOZ81WSrTFrxH4ZlkUCU0SsmFRN0qV6d
+    oauth2-redirect-url: http://localhost:8085/swagger-ui/oauth2-redirect.html

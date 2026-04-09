@@ -78,6 +78,40 @@ services:
     networks:
       - microservices-net
 
+  apigateway:
+    build:
+      context: ./apigateway
+      dockerfile: Dockerfile
+    container_name: apigateway
+    ports:
+      - "8080:8080"
+    networks:
+      - microservices-net
+    depends_on:
+      serversc:
+        condition: service_healthy
+      eureka:
+        condition: service_started
+      case-service:
+        condition: service_started
+      investigator-service:
+        condition: service_started
+      evidence-service:
+        condition: service_started
+      task-service:
+        condition: service_started
+      person-service:
+        condition: service_started
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka/
+      - SPRING_CONFIG_IMPORT=configserver:http://serversc:8888
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   keycloak:
     image: quay.io/keycloak/keycloak
     container_name: keycloak_murdercase
@@ -89,9 +123,13 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
       KC_DB_USERNAME: postgres
       KC_DB_PASSWORD: postgres
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8881
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
     depends_on:
       - postgres
     volumes:
@@ -171,8 +209,11 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka
       - SPRING_CONFIG_IMPORT=configserver:http://serversc:8888
       - KEYCLOAK_SERVER_URL=http://keycloak:8080
-      - KEYCLOAK_ISSUER_URI=http://keycloak:8080/realms/murdercase
-      - KEYCLOAK_JWK_SET_URI=http://keycloak:8080/realms/murdercase/protocol/openid-connect/certs
+      - KEYCLOAK_ISSUER_URI=http://host.docker.internal:8881/realms/murdercase
+      - KEYCLOAK_JWK_SET_URI=http://host.docker.internal:8881/realms/murdercase/protocol/openid-connect/certs
+      - KEYCLOAK_REALM=murdercase
+      - KEYCLOAK_CLIENT_ID=murdercase-backend
+      - KEYCLOAK_CLIENT_SECRET=AhKpVfnY1N1WezMT2vxiuyX96okWIk3g
 
   person-service:
     build:
@@ -221,6 +262,56 @@ services:
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka
       - SPRING_CONFIG_IMPORT=configserver:http://serversc:8888
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    ports:
+      - "8089:8089"
+    networks:
+      - microservices-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      serversc:
+        condition: service_healthy
+      eureka:
+        condition: service_started
+    environment:
+      - MAIL_USERNAME=investigacionlascarinosas@gmail.com
+      - MAIL_PASSWORD:abnnkwzbartaxdbq
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka
+      - SPRING_CONFIG_IMPORT=configserver:http://serversc:8888
+
+  audit-service:
+    build:
+      context: ./audit-service
+      dockerfile: Dockerfile
+    container_name: audit-service
+    ports:
+      - "8090:8090"
+    networks:
+      - microservices-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      serversc:
+        condition: service_healthy
+      eureka:
+        condition: service_started
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/audits
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka
+      - SPRING_CONFIG_IMPORT=configserver:http://serversc:8888
+
 
 volumes:
   postgres_data:
