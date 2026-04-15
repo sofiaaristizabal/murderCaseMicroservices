@@ -27,7 +27,7 @@ public class InvestigatorService {
 
     public InvestigatorResponseDTO create (InvestigatorCreateDTO dto){
         String keycloakId = keycloakAdminService.createUser(
-          dto.email(), dto.password(), dto.name(), dto.role()
+          dto.email(), dto.password(), dto.name(), dto.lastName(), dto.role()
         );
         Investigator investigator = InvestigatorMapper.toEntity(dto, keycloakId);
         investigatorRepository.save(investigator);
@@ -66,7 +66,8 @@ public class InvestigatorService {
 
         Investigator investigator = investigatorRepository.findById(id).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND, "investigator not found with id: " + id));
         InvestigatorMapper.assignCase(investigator, dto);
-        return InvestigatorMapper.toResponseDTO(investigator);
+        Investigator saved = investigatorRepository.save(investigator);
+        return InvestigatorMapper.toResponseDTO(saved);
     }
 
     public void deleteById(Long id){

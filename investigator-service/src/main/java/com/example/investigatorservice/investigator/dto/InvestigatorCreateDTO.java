@@ -9,6 +9,9 @@ public record InvestigatorCreateDTO(
         @NotBlank(message = "name is required") //Not blank is only for string
         @Size(min=2, max=120, message="name must be between 2 and 120 characters")
         String name,
+        @NotBlank(message = "last name is required")
+        @Size(min=2, max=120, message="last name must be between 2 and 120 characters")
+        String lastName,
         @NotNull(message = "type of document is required")
         TypeDocument typeDocument,
         @NotBlank(message = "Document is required")
@@ -28,7 +31,6 @@ public record InvestigatorCreateDTO(
         )
         String password,
         @NotBlank(message = "role is required")
-        @Email(message = "role must be a valid email address")
         String role
 ) {
 }

@@ -128,8 +128,9 @@ services:
       KC_DB_PASSWORD: postgres
       KC_HOSTNAME: localhost
       KC_HOSTNAME_PORT: 8881
-      KC_HOSTNAME_STRICT: false
-      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
     depends_on:
       - postgres
     volumes:
@@ -209,11 +210,11 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka
       - SPRING_CONFIG_IMPORT=configserver:http://serversc:8888
       - KEYCLOAK_SERVER_URL=http://keycloak:8080
-      - KEYCLOAK_ISSUER_URI=http://host.docker.internal:8881/realms/murdercase
-      - KEYCLOAK_JWK_SET_URI=http://host.docker.internal:8881/realms/murdercase/protocol/openid-connect/certs
+      - KEYCLOAK_ISSUER_URI=http://localhost:8881/realms/murdercase
+      - KEYCLOAK_JWK_SET_URI=http://keycloak:8080/realms/murdercase/protocol/openid-connect/certs
       - KEYCLOAK_REALM=murdercase
       - KEYCLOAK_CLIENT_ID=murdercase-backend
-      - KEYCLOAK_CLIENT_SECRET=AhKpVfnY1N1WezMT2vxiuyX96okWIk3g
+      - KEYCLOAK_CLIENT_SECRET=UOZ81WSrTFrxH4ZlkUCU0SsmFRN0qV6d
 
   person-service:
     build:
@@ -312,6 +313,14 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka:8761/eureka
       - SPRING_CONFIG_IMPORT=configserver:http://serversc:8888
 
+  frontend:
+    build:
+      context: "../Front/murdercase-frontend"
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    networks:
+      - microservices-net
 
 volumes:
   postgres_data:

@@ -47,7 +47,7 @@ public class KeycloakAdminService {
     }
 
     // Vamos a crear el usuario desde keycloak, los usuarios van a ser los investigadores ya que ello usaran este metodo
-    public String createUser(String email, String password, String name, String role) {
+    public String createUser(String email, String password, String firstName, String lastName, String role) {
         String adminToken = getAdminToken();
         String url = serverUrl + "/admin/realms/" + realm + "/users";
 
@@ -56,26 +56,25 @@ public class KeycloakAdminService {
         headers.setBearerAuth(adminToken);
 
         Map<String, Object> userBody = Map.of(
-                "username", email,
-                "email", email,
-                "firstName", name,
-                "enabled", true,
-                "credentials", List.of(Map.of(
-                        "type", "password",
-                        "value", password,
-                        "temporary", false
+                "username",      email,
+                "email",         email,
+                "firstName",     firstName,
+                "lastName",      lastName,        // ← was missing
+                "enabled",       true,
+                "emailVerified", true,            // ← was missing — this is the key fix
+                "credentials",   List.of(Map.of(
+                        "type",      "password",
+                        "value",     password,
+                        "temporary", false        // ← already correct, keeping it
                 ))
         );
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(userBody, headers);
         ResponseEntity<Void> response = restTemplate.postForEntity(url, request, Void.class);
 
-        // Keycloak returns the new user's URL in the Location header
-        // http://localhost:8881/admin/realms/murdercase/users/some-uuid
         String location = response.getHeaders().getLocation().toString();
         String keycloakId = location.substring(location.lastIndexOf("/") + 1);
 
-        // Step 3 — assign the role to the user
         assignRole(keycloakId, role, adminToken);
 
         return keycloakId;

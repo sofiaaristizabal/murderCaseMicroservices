@@ -10,7 +10,7 @@ import org.springframework.kafka.config.TopicBuilder;
 @Configuration
 public class KafkaTopicConfig {
 
-    public static final String CASE_CREATED_TOPIC = "case_created";
+    public static final String CASE_CREATED_TOPIC = "case-created";
 
     @Bean
     public NewTopic caseCreatedTopic(){

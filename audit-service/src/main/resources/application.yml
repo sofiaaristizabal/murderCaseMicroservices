@@ -8,6 +8,13 @@ spring:
     username: postgres
     password: postgres
     driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
     consumer:
@@ -22,3 +29,8 @@ spring:
           evidenceCreated:com.example.auditservice.audit.events.EvidenceCreatedEvent,
           taskAssigned:com.example.auditservice.audit.events.TaskAssignedEvent,
           taskCompleted:com.example.auditservice.audit.events.TaskCompletedEvent
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+    fetch-registry: true

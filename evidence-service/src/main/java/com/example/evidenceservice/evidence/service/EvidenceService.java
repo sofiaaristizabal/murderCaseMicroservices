@@ -9,6 +9,7 @@ import com.example.evidenceservice.evidence.mapper.EvidenceMapper;
 import com.example.evidenceservice.evidence.model.Evidence;
 import com.example.evidenceservice.evidence.repository.EvidenceRepository;
 import feign.FeignException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@Slf4j
 public class EvidenceService {
      private final EvidenceRepository evidenceRepository;
      private final CaseClient caseClient;
@@ -36,16 +38,19 @@ public class EvidenceService {
          InvestigatorResponse investigator_approved;
          try{
              caso = caseClient.getCaseById(dto.caseId());
+             log.info("case fetched. case id: {}", caso.id());
          } catch(FeignException.NotFound e){
              throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Case not found");
          }
          try{
              investigator_collect = investigatorClient.getInvestigatorById(dto.investigatorCollectId());
+             log.info("Investigator collect fetched. investigator id: {}, investigator name: {}, case of investigator: {}", investigator_collect.id(), investigator_collect.name(), investigator_collect.caseId());
          } catch(FeignException.NotFound e){
              throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Investigator who collects not found");
          }
          try{
              investigator_approved = investigatorClient.getInvestigatorById(dto.investigatorApprovedId());
+             log.info("Investigator approved fetched. investigator id: {}, investigator name: {}, case of investigator: {}", investigator_approved.id(), investigator_approved.name(), investigator_approved.caseId());
          } catch(FeignException.NotFound e){
              throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Investigator who approved not found");
          }

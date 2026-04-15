@@ -38,6 +38,11 @@ spring:
           predicates:
             - Path=/api/tasks/**
 
+        - id: audit-service-route
+          uri: lb://audit-service
+          predicates:
+            - Path=/audit/**
+
 eureka:
   client:
     service-url:

@@ -10,7 +10,7 @@ import org.springframework.kafka.config.TopicBuilder;
 @Configuration
 public class KafkaTopicConfig {
 
-    public static final String EVIDENCE_CREATED_TOPIC = "evidence_created";
+    public static final String EVIDENCE_CREATED_TOPIC = "evidence-created";
 
     @Bean
     public NewTopic evidenceCreatedTopic(){
